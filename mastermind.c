@@ -26,27 +26,27 @@
 
 #include "mastermind_ioctl.h"
 
-#define SCULL_MAJOR 0
-#define SCULL_NR_DEVS 4
-#define SCULL_QUANTUM 4000
-#define SCULL_QSET 1000
+#define MASTERMIND_MAJOR 0
+#define MASTERMIND_NR_DEVS 4
+#define MASTERMIND_QUANTUM 4000
+#define MASTERMIND_QSET 1000
 
-int scull_major = SCULL_MAJOR;
-int scull_minor = 0;
-int scull_nr_devs = SCULL_NR_DEVS;
-int scull_quantum = SCULL_QUANTUM;
-int scull_qset = SCULL_QSET;
+int mastermind_major = MASTERMIND_MAJOR;
+int mastermind_minor = 0;
+int mastermind_nr_devs = MASTERMIND_NR_DEVS;
+int mastermind_quantum = MASTERMIND_QUANTUM;
+int mastermind_qset = MASTERMIND_QSET;
 
-module_param(scull_major, int, S_IRUGO);
-module_param(scull_minor, int, S_IRUGO);
-module_param(scull_nr_devs, int, S_IRUGO);
-module_param(scull_quantum, int, S_IRUGO);
-module_param(scull_qset, int, S_IRUGO);
+module_param(mastermind_major, int, S_IRUGO);
+module_param(mastermind_minor, int, S_IRUGO);
+module_param(mastermind_nr_devs, int, S_IRUGO);
+module_param(mastermind_quantum, int, S_IRUGO);
+module_param(mastermind_qset, int, S_IRUGO);
 
-MODULE_AUTHOR("Alessandro Rubini, Jonathan Corbet");
-MODULE_LICENSE("Dual BSD/GPL");
+MODULE_AUTHOR("Group 28");
+MODULE_LICENSE("MIT License");
 
-struct scull_dev {
+struct mastermind_dev {
     char **data;
     int quantum;
     int qset;
@@ -55,10 +55,10 @@ struct scull_dev {
     struct cdev cdev;
 };
 
-struct scull_dev *scull_devices;
+struct mastermind_dev *mastermind_devices;
 
 
-int scull_trim(struct scull_dev *dev)
+int mastermind_trim(struct mastermind_dev *dev)
 {
     int i;
 
@@ -70,41 +70,41 @@ int scull_trim(struct scull_dev *dev)
         kfree(dev->data);
     }
     dev->data = NULL;
-    dev->quantum = scull_quantum;
-    dev->qset = scull_qset;
+    dev->quantum = mastermind_quantum;
+    dev->qset = mastermind_qset;
     dev->size = 0;
     return 0;
 }
 
 
-int scull_open(struct inode *inode, struct file *filp)
+int mastermind_open(struct inode *inode, struct file *filp)
 {
-    struct scull_dev *dev;
+    struct mastermind_dev *dev;
 
-    dev = container_of(inode->i_cdev, struct scull_dev, cdev);
+    dev = container_of(inode->i_cdev, struct mastermind_dev, cdev);
     filp->private_data = dev;
 
     /* trim the device if open was write-only */
     if ((filp->f_flags & O_ACCMODE) == O_WRONLY) {
         if (down_interruptible(&dev->sem))
             return -ERESTARTSYS;
-        scull_trim(dev);
+        mastermind_trim(dev);
         up(&dev->sem);
     }
     return 0;
 }
 
 
-int scull_release(struct inode *inode, struct file *filp)
+int mastermind_release(struct inode *inode, struct file *filp)
 {
     return 0;
 }
 
 
-ssize_t scull_read(struct file *filp, char __user *buf, size_t count,
-                   loff_t *f_pos)
+ssize_t mastermind_read(struct file *filp, char __user *buf, size_t count,
+			loff_t *f_pos)
 {
-    struct scull_dev *dev = filp->private_data;
+    struct mastermind_dev *dev = filp->private_data;
     int quantum = dev->quantum;
     int s_pos, q_pos;
     ssize_t retval = 0;
@@ -139,10 +139,10 @@ ssize_t scull_read(struct file *filp, char __user *buf, size_t count,
 }
 
 
-ssize_t scull_write(struct file *filp, const char __user *buf, size_t count,
+ssize_t mastermind_write(struct file *filp, const char __user *buf, size_t count,
                     loff_t *f_pos)
 {
-    struct scull_dev *dev = filp->private_data;
+    struct mastermind_dev *dev = filp->private_data;
     int quantum = dev->quantum, qset = dev->qset;
     int s_pos, q_pos;
     ssize_t retval = -ENOMEM;
@@ -189,7 +189,7 @@ ssize_t scull_write(struct file *filp, const char __user *buf, size_t count,
     return retval;
 }
 
-long scull_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+long mastermind_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 
 	int err = 0, tmp;
@@ -199,8 +199,8 @@ long scull_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	 * extract the type and number bitfields, and don't decode
 	 * wrong cmds: return ENOTTY (inappropriate ioctl) before access_ok()
 	 */
-	if (_IOC_TYPE(cmd) != SCULL_IOC_MAGIC) return -ENOTTY;
-	if (_IOC_NR(cmd) > SCULL_IOC_MAXNR) return -ENOTTY;
+	if (_IOC_TYPE(cmd) != MASTERMIND_IOC_MAGIC) return -ENOTTY;
+	if (_IOC_NR(cmd) > MASTERMIND_IOC_MAXNR) return -ENOTTY;
 
 	/*
 	 * the direction is a bitmask, and VERIFY_WRITE catches R/W
@@ -215,79 +215,79 @@ long scull_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	if (err) return -EFAULT;
 
 	switch(cmd) {
-	  case SCULL_IOCRESET:
-		scull_quantum = SCULL_QUANTUM;
-		scull_qset = SCULL_QSET;
+	  case MASTERMIND_IOCRESET:
+		mastermind_quantum = MASTERMIND_QUANTUM;
+		mastermind_qset = MASTERMIND_QSET;
 		break;
 
-	  case SCULL_IOCSQUANTUM: /* Set: arg points to the value */
+	  case MASTERMIND_IOCSQUANTUM: /* Set: arg points to the value */
 		if (! capable (CAP_SYS_ADMIN))
 			return -EPERM;
-		retval = __get_user(scull_quantum, (int __user *)arg);
+		retval = __get_user(mastermind_quantum, (int __user *)arg);
 		break;
 
-	  case SCULL_IOCTQUANTUM: /* Tell: arg is the value */
+	  case MASTERMIND_IOCTQUANTUM: /* Tell: arg is the value */
 		if (! capable (CAP_SYS_ADMIN))
 			return -EPERM;
-		scull_quantum = arg;
+		mastermind_quantum = arg;
 		break;
 
-	  case SCULL_IOCGQUANTUM: /* Get: arg is pointer to result */
-		retval = __put_user(scull_quantum, (int __user *)arg);
+	  case MASTERMIND_IOCGQUANTUM: /* Get: arg is pointer to result */
+		retval = __put_user(mastermind_quantum, (int __user *)arg);
 		break;
 
-	  case SCULL_IOCQQUANTUM: /* Query: return it (it's positive) */
-		return scull_quantum;
+	  case MASTERMIND_IOCQQUANTUM: /* Query: return it (it's positive) */
+		return mastermind_quantum;
 
-	  case SCULL_IOCXQUANTUM: /* eXchange: use arg as pointer */
+	  case MASTERMIND_IOCXQUANTUM: /* eXchange: use arg as pointer */
 		if (! capable (CAP_SYS_ADMIN))
 			return -EPERM;
-		tmp = scull_quantum;
-		retval = __get_user(scull_quantum, (int __user *)arg);
+		tmp = mastermind_quantum;
+		retval = __get_user(mastermind_quantum, (int __user *)arg);
 		if (retval == 0)
 			retval = __put_user(tmp, (int __user *)arg);
 		break;
 
-	  case SCULL_IOCHQUANTUM: /* sHift: like Tell + Query */
+	  case MASTERMIND_IOCHQUANTUM: /* sHift: like Tell + Query */
 		if (! capable (CAP_SYS_ADMIN))
 			return -EPERM;
-		tmp = scull_quantum;
-		scull_quantum = arg;
+		tmp = mastermind_quantum;
+		mastermind_quantum = arg;
 		return tmp;
 
-	  case SCULL_IOCSQSET:
+	  case MASTERMIND_IOCSQSET:
 		if (! capable (CAP_SYS_ADMIN))
 			return -EPERM;
-		retval = __get_user(scull_qset, (int __user *)arg);
+		retval = __get_user(mastermind_qset, (int __user *)arg);
 		break;
 
-	  case SCULL_IOCTQSET:
+	  case MASTERMIND_IOCTQSET:
 		if (! capable (CAP_SYS_ADMIN))
 			return -EPERM;
-		scull_qset = arg;
+		mastermind_qset = arg;
 		break;
 
-	  case SCULL_IOCGQSET:
-		retval = __put_user(scull_qset, (int __user *)arg);
+	  case MASTERMIND_IOCGQSET:
+		retval = __put_user(mastermind_qset, (int __user *)arg);
 		break;
 
-	  case SCULL_IOCQQSET:
-		return scull_qset;
+	  case MASTERMIND_IOCQQSET:
+		return mastermind_qset;
 
-	  case SCULL_IOCXQSET:
+	  case MASTERMIND_IOCXQSET:
 		if (! capable (CAP_SYS_ADMIN))
 			return -EPERM;
-		tmp = scull_qset;
-		retval = __get_user(scull_qset, (int __user *)arg);
+		tmp = mastermind_qset;
+		retval = __get_user(mastermind_qset, (int __user *)arg);
 		if (retval == 0)
 			retval = put_user(tmp, (int __user *)arg);
 		break;
 
-	  case SCULL_IOCHQSET:
+	  case MASTERMIND_IOCHQSET:
 		if (! capable (CAP_SYS_ADMIN))
 			return -EPERM;
-		tmp = scull_qset;
-		scull_qset = arg;
+		tmp = mastermind_qset;
+		mastermind_qset = arg;
 		return tmp;
 
 	  default:  /* redundant, as cmd was checked against MAXNR */
@@ -297,9 +297,9 @@ long scull_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 }
 
 
-loff_t scull_llseek(struct file *filp, loff_t off, int whence)
+loff_t mastermind_llseek(struct file *filp, loff_t off, int whence)
 {
-    struct scull_dev *dev = filp->private_data;
+    struct mastermind_dev *dev = filp->private_data;
     loff_t newpos;
 
     switch(whence) {
@@ -325,83 +325,83 @@ loff_t scull_llseek(struct file *filp, loff_t off, int whence)
 }
 
 
-struct file_operations scull_fops = {
+struct file_operations mastermind_fops = {
     .owner =    THIS_MODULE,
-    .llseek =   scull_llseek,
-    .read =     scull_read,
-    .write =    scull_write,
-    .unlocked_ioctl =  scull_ioctl,
-    .open =     scull_open,
-    .release =  scull_release,
+    .llseek =   mastermind_llseek,
+    .read =     mastermind_read,
+    .write =    mastermind_write,
+    .unlocked_ioctl =  mastermind_ioctl,
+    .open =     mastermind_open,
+    .release =  mastermind_release,
 };
 
 
-void scull_cleanup_module(void)
+void mastermind_cleanup_module(void)
 {
     int i;
-    dev_t devno = MKDEV(scull_major, scull_minor);
+    dev_t devno = MKDEV(mastermind_major, mastermind_minor);
 
-    if (scull_devices) {
-        for (i = 0; i < scull_nr_devs; i++) {
-            scull_trim(scull_devices + i);
-            cdev_del(&scull_devices[i].cdev);
+    if (mastermind_devices) {
+        for (i = 0; i < mastermind_nr_devs; i++) {
+            mastermind_trim(mastermind_devices + i);
+            cdev_del(&mastermind_devices[i].cdev);
         }
-    kfree(scull_devices);
+    kfree(mastermind_devices);
     }
 
-    unregister_chrdev_region(devno, scull_nr_devs);
+    unregister_chrdev_region(devno, mastermind_nr_devs);
 }
 
 
-int scull_init_module(void)
+int mastermind_init_module(void)
 {
     int result, i;
     int err;
     dev_t devno = 0;
-    struct scull_dev *dev;
+    struct mastermind_dev *dev;
 
-    if (scull_major) {
-        devno = MKDEV(scull_major, scull_minor);
-        result = register_chrdev_region(devno, scull_nr_devs, "scull");
+    if (mastermind_major) {
+        devno = MKDEV(mastermind_major, mastermind_minor);
+        result = register_chrdev_region(devno, mastermind_nr_devs, "mastermind");
     } else {
-        result = alloc_chrdev_region(&devno, scull_minor, scull_nr_devs,
-                                     "scull");
-        scull_major = MAJOR(devno);
+        result = alloc_chrdev_region(&devno, mastermind_minor, mastermind_nr_devs,
+                                     "mastermind");
+        mastermind_major = MAJOR(devno);
     }
     if (result < 0) {
-        printk(KERN_WARNING "scull: can't get major %d\n", scull_major);
+        printk(KERN_WARNING "mastermind: can't get major %d\n", mastermind_major);
         return result;
     }
 
-    scull_devices = kmalloc(scull_nr_devs * sizeof(struct scull_dev),
-                            GFP_KERNEL);
-    if (!scull_devices) {
+    mastermind_devices = kmalloc(mastermind_nr_devs * sizeof(struct mastermind_dev),
+				 GFP_KERNEL);
+    if (!mastermind_devices) {
         result = -ENOMEM;
         goto fail;
     }
-    memset(scull_devices, 0, scull_nr_devs * sizeof(struct scull_dev));
+    memset(mastermind_devices, 0, mastermind_nr_devs * sizeof(struct mastermind_dev));
 
     /* Initialize each device. */
-    for (i = 0; i < scull_nr_devs; i++) {
-        dev = &scull_devices[i];
-        dev->quantum = scull_quantum;
-        dev->qset = scull_qset;
+    for (i = 0; i < mastermind_nr_devs; i++) {
+        dev = &mastermind_devices[i];
+        dev->quantum = mastermind_quantum;
+        dev->qset = mastermind_qset;
         sema_init(&dev->sem,1);
-        devno = MKDEV(scull_major, scull_minor + i);
-        cdev_init(&dev->cdev, &scull_fops);
+        devno = MKDEV(mastermind_major, mastermind_minor + i);
+        cdev_init(&dev->cdev, &mastermind_fops);
         dev->cdev.owner = THIS_MODULE;
-        dev->cdev.ops = &scull_fops;
+        dev->cdev.ops = &mastermind_fops;
         err = cdev_add(&dev->cdev, devno, 1);
         if (err)
-            printk(KERN_NOTICE "Error %d adding scull%d", err, i);
+            printk(KERN_NOTICE "Error %d adding mastermind%d", err, i);
     }
 
     return 0; /* succeed */
 
   fail:
-    scull_cleanup_module();
+    mastermind_cleanup_module();
     return result;
 }
 
-module_init(scull_init_module);
-module_exit(scull_cleanup_module);
+module_init(mastermind_init_module);
+module_exit(mastermind_cleanup_module);
