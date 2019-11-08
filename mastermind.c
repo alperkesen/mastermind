@@ -72,8 +72,8 @@ int mastermind_trim(struct mastermind_dev *dev)
         kfree(dev->data);
     }
     dev->data = NULL;
-    dev->num_guess = mastermind_num_guess;
-    dev->size = 0;
+    dev->num_guess = 0;
+    dev->size = MMIND_LINES_LEN;
     return 0;
 }
 
@@ -316,7 +316,7 @@ int mastermind_init_module(void)
     for (i = 0; i < mastermind_nr_devs; i++) {
         dev = &mastermind_devices[i];
         dev->quantum = mastermind_quantum;
-        dev->qset = mastermind_qset;
+        dev->num_guess = 1
         sema_init(&dev->sem,1);
         devno = MKDEV(mastermind_major, mastermind_minor + i);
         cdev_init(&dev->cdev, &mastermind_fops);
