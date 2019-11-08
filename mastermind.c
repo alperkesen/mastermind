@@ -30,19 +30,19 @@
 #define MASTERMIND_NR_DEVS 4
 #define MMIND_NUMBER 5000
 #define MMIND_MAX_GUESSES 10
+#define MMIND_GUESS 16            // quantum
+#define MMIND_NUM_GUESS 256       // qset
 #define MMIND_DIGITS 4
-#define MMIND_BUFFER_LEN 16
-#define MMIND_LINES_LEN 256
 
 int mastermind_major = MASTERMIND_MAJOR;
 int mastermind_minor = 0;
 int mastermind_nr_devs = MASTERMIND_NR_DEVS;
 int mmind_number = MMIND_NUMBER;
 int mmind_max_guesses = MMIND_MAX_GUESSES;
+int mmind_guess = MMIND_GUESS;
+int mmind_num_guess = MMIND_NUM_GUESS;
 
 module_param(mastermind_major, int, S_IRUGO);
-module_param(mastermind_minor, int, S_IRUGO);
-module_param(mastermind_nr_devs, int, S_IRUGO);
 module_param(mmind_number, int, S_IRUGO);
 module_param(mmind_max_guesses, int, S_IRUGO);
 
@@ -51,7 +51,8 @@ MODULE_LICENSE("MIT License");
 
 struct mastermind_dev {
     char **data;
-    int num_guess;
+    int guess; // quantum
+    int num_guess; // qset
     unsigned long size;
     struct semaphore sem;
     struct cdev cdev;
@@ -72,8 +73,9 @@ int mastermind_trim(struct mastermind_dev *dev)
         kfree(dev->data);
     }
     dev->data = NULL;
-    dev->num_guess = 0;
-    dev->size = MMIND_LINES_LEN;
+    dev->guess = mmind_guess;
+    dev->num_guess = mmind_num_guess;
+    dev->size = 0;
     return 0;
 }
 
@@ -106,6 +108,7 @@ ssize_t mastermind_read(struct file *filp, char __user *buf, size_t count,
 			loff_t *f_pos)
 {
     struct mastermind_dev *dev = filp->private_data;
+    int guess = dev->guess;
     int s_pos, q_pos;
     ssize_t retval = 0;
 
@@ -116,15 +119,15 @@ ssize_t mastermind_read(struct file *filp, char __user *buf, size_t count,
     if (*f_pos + count > dev->size)
         count = dev->size - *f_pos;
 
-    s_pos = (long) *f_pos / quantum;
-    q_pos = (long) *f_pos % quantum;
+    s_pos = (long) *f_pos / guess;
+    q_pos = (long) *f_pos % guess;
 
     if (dev->data == NULL || ! dev->data[s_pos])
         goto out;
 
     /* read only up to the end of this quantum */
-    if (count > quantum - q_pos)
-        count = quantum - q_pos;
+    if (count > guess - q_pos)
+        count = guess - q_pos;
 
     if (copy_to_user(buf, dev->data[s_pos] + q_pos, count)) {
         retval = -EFAULT;
@@ -143,35 +146,35 @@ ssize_t mastermind_write(struct file *filp, const char __user *buf, size_t count
                     loff_t *f_pos)
 {
     struct mastermind_dev *dev = filp->private_data;
-    int quantum = dev->quantum, qset = dev->qset;
+    int guess = dev->guess, num_guess = dev->num_guess;
     int s_pos, q_pos;
     ssize_t retval = -ENOMEM;
 
     if (down_interruptible(&dev->sem))
         return -ERESTARTSYS;
 
-    if (*f_pos >= quantum * qset) {
+    if (*f_pos >= guess * num_guess) {
         retval = 0;
         goto out;
     }
 
-    s_pos = (long) *f_pos / quantum;
-    q_pos = (long) *f_pos % quantum;
+    s_pos = (long) *f_pos / guess;
+    q_pos = (long) *f_pos % guess;
 
     if (!dev->data) {
-        dev->data = kmalloc(qset * sizeof(char *), GFP_KERNEL);
+        dev->data = kmalloc(num_guess * sizeof(char *), GFP_KERNEL);
         if (!dev->data)
             goto out;
-        memset(dev->data, 0, qset * sizeof(char *));
+        memset(dev->data, 0, num_guess * sizeof(char *));
     }
     if (!dev->data[s_pos]) {
-        dev->data[s_pos] = kmalloc(quantum, GFP_KERNEL);
+        dev->data[s_pos] = kmalloc(guess, GFP_KERNEL);
         if (!dev->data[s_pos])
             goto out;
     }
     /* write only up to the end of this quantum */
-    if (count > quantum - q_pos)
-        count = quantum - q_pos;
+    if (count > guess - q_pos)
+        count = guess - q_pos;
 
     if (copy_from_user(dev->data[s_pos] + q_pos, buf, count)) {
         retval = -EFAULT;
@@ -215,11 +218,14 @@ long mastermind_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	if (err) return -EFAULT;
 
 	switch(cmd) {
-          case MMIND_REMANING:
+          case MMIND_REMAINING:
+	    return -ENOTTY;
 
           case MMIND_NEWGAME:
+	    return -ENOTTY;
 
 	  case MMIND_ENDGAME:
+	    return -ENOTTY;
 
 	  default:  /* redundant, as cmd was checked against MAXNR */
 		return -ENOTTY;
@@ -315,8 +321,8 @@ int mastermind_init_module(void)
     /* Initialize each device. */
     for (i = 0; i < mastermind_nr_devs; i++) {
         dev = &mastermind_devices[i];
-        dev->quantum = mastermind_quantum;
-        dev->num_guess = 1
+        dev->guess = mmind_guess;
+        dev->num_guess = mmind_num_guess;
         sema_init(&dev->sem,1);
         devno = MKDEV(mastermind_major, mastermind_minor + i);
         cdev_init(&dev->cdev, &mastermind_fops);
