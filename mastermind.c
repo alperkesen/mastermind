@@ -28,28 +28,30 @@
 
 #define MASTERMIND_MAJOR 0
 #define MASTERMIND_NR_DEVS 4
-#define MASTERMIND_QUANTUM 4000
-#define MASTERMIND_QSET 1000
+#define MMIND_NUMBER 5000
+#define MMIND_MAX_GUESSES 10
+#define MMIND_DIGITS 4
+#define MMIND_BUFFER_LEN 16
+#define MMIND_LINES_LEN 256
 
 int mastermind_major = MASTERMIND_MAJOR;
 int mastermind_minor = 0;
 int mastermind_nr_devs = MASTERMIND_NR_DEVS;
-int mastermind_quantum = MASTERMIND_QUANTUM;
-int mastermind_qset = MASTERMIND_QSET;
+int mmind_number = MMIND_NUMBER;
+int mmind_max_guesses = MMIND_MAX_GUESSES;
 
 module_param(mastermind_major, int, S_IRUGO);
 module_param(mastermind_minor, int, S_IRUGO);
 module_param(mastermind_nr_devs, int, S_IRUGO);
-module_param(mastermind_quantum, int, S_IRUGO);
-module_param(mastermind_qset, int, S_IRUGO);
+module_param(mmind_number, int, S_IRUGO);
+module_param(mmind_max_guesses, int, S_IRUGO);
 
 MODULE_AUTHOR("Group 28");
 MODULE_LICENSE("MIT License");
 
 struct mastermind_dev {
     char **data;
-    int quantum;
-    int qset;
+    int num_guess;
     unsigned long size;
     struct semaphore sem;
     struct cdev cdev;
@@ -63,15 +65,14 @@ int mastermind_trim(struct mastermind_dev *dev)
     int i;
 
     if (dev->data) {
-        for (i = 0; i < dev->qset; i++) {
+        for (i = 0; i < dev->num_guess; i++) {
             if (dev->data[i])
                 kfree(dev->data[i]);
         }
         kfree(dev->data);
     }
     dev->data = NULL;
-    dev->quantum = mastermind_quantum;
-    dev->qset = mastermind_qset;
+    dev->num_guess = mastermind_num_guess;
     dev->size = 0;
     return 0;
 }
@@ -105,7 +106,6 @@ ssize_t mastermind_read(struct file *filp, char __user *buf, size_t count,
 			loff_t *f_pos)
 {
     struct mastermind_dev *dev = filp->private_data;
-    int quantum = dev->quantum;
     int s_pos, q_pos;
     ssize_t retval = 0;
 
@@ -215,80 +215,11 @@ long mastermind_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	if (err) return -EFAULT;
 
 	switch(cmd) {
-	  case MASTERMIND_IOCRESET:
-		mastermind_quantum = MASTERMIND_QUANTUM;
-		mastermind_qset = MASTERMIND_QSET;
-		break;
+          case MMIND_REMANING:
 
-	  case MASTERMIND_IOCSQUANTUM: /* Set: arg points to the value */
-		if (! capable (CAP_SYS_ADMIN))
-			return -EPERM;
-		retval = __get_user(mastermind_quantum, (int __user *)arg);
-		break;
+          case MMIND_NEWGAME:
 
-	  case MASTERMIND_IOCTQUANTUM: /* Tell: arg is the value */
-		if (! capable (CAP_SYS_ADMIN))
-			return -EPERM;
-		mastermind_quantum = arg;
-		break;
-
-	  case MASTERMIND_IOCGQUANTUM: /* Get: arg is pointer to result */
-		retval = __put_user(mastermind_quantum, (int __user *)arg);
-		break;
-
-	  case MASTERMIND_IOCQQUANTUM: /* Query: return it (it's positive) */
-		return mastermind_quantum;
-
-	  case MASTERMIND_IOCXQUANTUM: /* eXchange: use arg as pointer */
-		if (! capable (CAP_SYS_ADMIN))
-			return -EPERM;
-		tmp = mastermind_quantum;
-		retval = __get_user(mastermind_quantum, (int __user *)arg);
-		if (retval == 0)
-			retval = __put_user(tmp, (int __user *)arg);
-		break;
-
-	  case MASTERMIND_IOCHQUANTUM: /* sHift: like Tell + Query */
-		if (! capable (CAP_SYS_ADMIN))
-			return -EPERM;
-		tmp = mastermind_quantum;
-		mastermind_quantum = arg;
-		return tmp;
-
-	  case MASTERMIND_IOCSQSET:
-		if (! capable (CAP_SYS_ADMIN))
-			return -EPERM;
-		retval = __get_user(mastermind_qset, (int __user *)arg);
-		break;
-
-	  case MASTERMIND_IOCTQSET:
-		if (! capable (CAP_SYS_ADMIN))
-			return -EPERM;
-		mastermind_qset = arg;
-		break;
-
-	  case MASTERMIND_IOCGQSET:
-		retval = __put_user(mastermind_qset, (int __user *)arg);
-		break;
-
-	  case MASTERMIND_IOCQQSET:
-		return mastermind_qset;
-
-	  case MASTERMIND_IOCXQSET:
-		if (! capable (CAP_SYS_ADMIN))
-			return -EPERM;
-		tmp = mastermind_qset;
-		retval = __get_user(mastermind_qset, (int __user *)arg);
-		if (retval == 0)
-			retval = put_user(tmp, (int __user *)arg);
-		break;
-
-	  case MASTERMIND_IOCHQSET:
-		if (! capable (CAP_SYS_ADMIN))
-			return -EPERM;
-		tmp = mastermind_qset;
-		mastermind_qset = arg;
-		return tmp;
+	  case MMIND_ENDGAME:
 
 	  default:  /* redundant, as cmd was checked against MAXNR */
 		return -ENOTTY;
