@@ -28,7 +28,7 @@
 
 #define MASTERMIND_MAJOR 0
 #define MASTERMIND_NR_DEVS 4
-#define MMIND_NUMBER 5000
+#define MMIND_NUMBER "4283"
 #define MMIND_MAX_GUESSES 10
 #define MMIND_GUESS 16            // quantum
 #define MMIND_NUM_GUESS 256       // qset
@@ -37,13 +37,13 @@
 int mastermind_major = MASTERMIND_MAJOR;
 int mastermind_minor = 0;
 int mastermind_nr_devs = MASTERMIND_NR_DEVS;
-int mmind_number = MMIND_NUMBER;
+char *mmind_number = MMIND_NUMBER;
 int mmind_max_guesses = MMIND_MAX_GUESSES;
 int mmind_guess = MMIND_GUESS;
 int mmind_num_guess = MMIND_NUM_GUESS;
 
 module_param(mastermind_major, int, S_IRUGO);
-module_param(mmind_number, int, S_IRUGO);
+module_param(mmind_number, charp, S_IRUGO | S_IWUSR);
 module_param(mmind_max_guesses, int, S_IRUGO);
 
 MODULE_AUTHOR("Group 28");
@@ -53,12 +53,34 @@ struct mastermind_dev {
     char **data;
     int guess; // quantum
     int num_guess; // qset
+    int current_guess;
     unsigned long size;
     struct semaphore sem;
     struct cdev cdev;
 };
 
 struct mastermind_dev *mastermind_devices;
+
+
+void write_mmind_number(char *buffer, char *mmind_number, char *number, int num_guess)
+{
+  int i;
+  int m = 0;
+  int n = 0;
+
+  for (i = 0; i < MMIND_DIGITS; i++) {
+    if (mmind_number[i] == number[i]) {
+      m++;
+    } else {
+      if (strchr(mmind_number, number[i])) {
+	n++;
+      }
+    }
+  }
+
+  snprintf(buffer, MMIND_GUESS, "%s %d+ %d- %04d\n ",
+	   number, m, n, num_guess);
+}
 
 
 int mastermind_trim(struct mastermind_dev *dev)
@@ -75,6 +97,7 @@ int mastermind_trim(struct mastermind_dev *dev)
     dev->data = NULL;
     dev->guess = mmind_guess;
     dev->num_guess = mmind_num_guess;
+    dev->current_guess = 0;
     dev->size = 0;
     return 0;
 }
@@ -86,6 +109,7 @@ int mastermind_open(struct inode *inode, struct file *filp)
 
     dev = container_of(inode->i_cdev, struct mastermind_dev, cdev);
     filp->private_data = dev;
+    dev->current_guess = 0;
 
     /* trim the device if open was write-only */
     if ((filp->f_flags & O_ACCMODE) == O_WRONLY) {
@@ -148,6 +172,7 @@ ssize_t mastermind_write(struct file *filp, const char __user *buf, size_t count
     struct mastermind_dev *dev = filp->private_data;
     int guess = dev->guess, num_guess = dev->num_guess;
     int s_pos, q_pos;
+    char *number;
     ssize_t retval = -ENOMEM;
 
     if (down_interruptible(&dev->sem))
@@ -173,13 +198,27 @@ ssize_t mastermind_write(struct file *filp, const char __user *buf, size_t count
             goto out;
     }
     /* write only up to the end of this quantum */
-    if (count > guess - q_pos)
-        count = guess - q_pos;
+    // if (count > guess - q_pos)
+    //     count = guess - q_pos;
 
-    if (copy_from_user(dev->data[s_pos] + q_pos, buf, count)) {
+    number = kmalloc((MMIND_DIGITS + 1) * sizeof(char), GFP_KERNEL);
+
+    if (copy_from_user(number, buf, count)) {
         retval = -EFAULT;
         goto out;
     }
+
+    // report = kmalloc(16 * sizeof(char), GFP_KERNEL);
+    dev->current_guess++;
+
+    if (dev->current_guess > mmind_max_guesses) {
+        retval = -EFAULT;
+        goto out;
+    }
+
+    write_mmind_number(dev->data[s_pos] + q_pos, mmind_number, number,
+		       dev->current_guess);
+
     *f_pos += count;
     retval = count;
 
@@ -323,6 +362,7 @@ int mastermind_init_module(void)
         dev = &mastermind_devices[i];
         dev->guess = mmind_guess;
         dev->num_guess = mmind_num_guess;
+	dev->current_guess = 0;
         sema_init(&dev->sem,1);
         devno = MKDEV(mastermind_major, mastermind_minor + i);
         cdev_init(&dev->cdev, &mastermind_fops);
@@ -333,6 +373,7 @@ int mastermind_init_module(void)
             printk(KERN_NOTICE "Error %d adding mastermind%d", err, i);
     }
 
+    printk(KERN_INFO "Loading hello module...\n");
     return 0; /* succeed */
 
   fail:
