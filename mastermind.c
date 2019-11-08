@@ -78,8 +78,8 @@ void write_mmind_number(char *buffer, char *mmind_number, char *number, int num_
     }
   }
 
-  snprintf(buffer, MMIND_GUESS, "%s %d+ %d- %04d\n ",
-	   number, m, n, num_guess);
+  snprintf(buffer, MMIND_GUESS * 2, "%d+%d- %s %04d\n ",
+	   m, n, number, num_guess);
 }
 
 
@@ -136,6 +136,7 @@ ssize_t mastermind_read(struct file *filp, char __user *buf, size_t count,
     int s_pos, q_pos;
     ssize_t retval = 0;
 
+
     if (down_interruptible(&dev->sem))
         return -ERESTARTSYS;
     if (*f_pos >= dev->size)
@@ -150,10 +151,11 @@ ssize_t mastermind_read(struct file *filp, char __user *buf, size_t count,
         goto out;
 
     /* read only up to the end of this quantum */
-    if (count > guess - q_pos)
-        count = guess - q_pos;
+    //if (count > guess - q_pos)
+    //   count = guess - q_pos;
+    count = 16;
 
-    if (copy_to_user(buf, dev->data[s_pos] + q_pos, count)) {
+    if (copy_to_user(buf, dev->data[s_pos] + q_pos, 16 * 2)) {
         retval = -EFAULT;
         goto out;
     }
@@ -203,7 +205,7 @@ ssize_t mastermind_write(struct file *filp, const char __user *buf, size_t count
 
     number = kmalloc((MMIND_DIGITS + 1) * sizeof(char), GFP_KERNEL);
 
-    if (copy_from_user(number, buf, count)) {
+    if (copy_from_user(number, buf, MMIND_DIGITS)) {
         retval = -EFAULT;
         goto out;
     }
@@ -216,9 +218,9 @@ ssize_t mastermind_write(struct file *filp, const char __user *buf, size_t count
         goto out;
     }
 
+    //dev->data[s_pos] + q_pos
     write_mmind_number(dev->data[s_pos] + q_pos, mmind_number, number,
 		       dev->current_guess);
-
     *f_pos += count;
     retval = count;
 
@@ -258,13 +260,13 @@ long mastermind_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	switch(cmd) {
           case MMIND_REMAINING:
-	    return -ENOTTY;
+	    return 2;
 
           case MMIND_NEWGAME:
-	    return -ENOTTY;
+	    return 3;
 
 	  case MMIND_ENDGAME:
-	    return -ENOTTY;
+	    return 5;
 
 	  default:  /* redundant, as cmd was checked against MAXNR */
 		return -ENOTTY;
