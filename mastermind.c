@@ -76,12 +76,12 @@ void write_mmind_number(char *buffer, char *mmind_number, char *number, int num_
         m++;
     }
   }
-  for (int i = 0; i < MMIND_DIGITS; ++i)
+  for (i = 0; i < MMIND_DIGITS; i++)
   {
     if (temp_number[i] != '+') {
         char* found_char = strchr(temp_number, mmind_number[i]);
         if(found_char) {
-            found_char[0] = '-'
+            found_char[0] = '-';
             n++;
         }
     }
