@@ -67,19 +67,28 @@ void write_mmind_number(char *buffer, char *mmind_number, char *number, int num_
   int i;
   int m = 0;
   int n = 0;
+  char temp_number[MMIND_DIGITS+1];
+  memcpy(temp_number, number, MMIND_DIGITS + 1);
 
   for (i = 0; i < MMIND_DIGITS; i++) {
-    if (mmind_number[i] == number[i]) {
-      m++;
-    } else {
-      if (strchr(mmind_number, number[i])) {
-	n++;
-      }
+    if (number[i] == mmind_number[i]) {
+        temp_number[i] = '+';
+        m++;
+    }
+  }
+  for (int i = 0; i < MMIND_DIGITS; ++i)
+  {
+    if (temp_number[i] != '+') {
+        char* found_char = strchr(temp_number, mmind_number[i]);
+        if(found_char) {
+            found_char[0] = '-'
+            n++;
+        }
     }
   }
 
-  snprintf(buffer, MMIND_GUESS * 2, "%d+%d- %s %04d\n ",
-	   m, n, number, num_guess);
+  snprintf(buffer, MMIND_GUESS * 2, "%s %d+%d- %04d\n",
+	   number, m, n, num_guess);
 }
 
 
