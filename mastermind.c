@@ -270,7 +270,8 @@ long mastermind_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	    if (!capable(CAP_SYS_ADMIN))
 	      return -EPERM;
 	    mastermind_trim(dev);
-	    mmind_number = arg;
+	    snprintf(mmind_number, MMIND_DIGITS, "%ld", arg);
+	    mmind_number[MMIND_DIGITS] = '\0';
 	    break;
 	  case MMIND_ENDGAME:
 	    if (!capable(CAP_SYS_ADMIN))
