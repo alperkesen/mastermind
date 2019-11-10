@@ -215,9 +215,8 @@ ssize_t mastermind_write(struct file *filp, const char __user *buf, size_t count
 
     dev->current_guess++;
 
-
     if (dev->current_guess > mmind_max_guesses) {
-        retval = -EFAULT;
+        retval = -EDQUOT;
         goto out;
     }
 
