@@ -106,6 +106,7 @@ int mastermind_trim(struct mastermind_dev *dev)
     dev->guess = mmind_guess;
     dev->num_guess = mmind_num_guess;
     dev->size = 0;
+    dev->current_guess = 0;
     return 0;
 }
 
