@@ -139,7 +139,6 @@ ssize_t mastermind_read(struct file *filp, char __user *buf, size_t count,
 {
     struct mastermind_dev *dev = filp->private_data;
     int guess = dev->guess;
-    int s_pos;
     int i;
     char *report;
     ssize_t retval = 0;
@@ -191,7 +190,6 @@ ssize_t mastermind_write(struct file *filp, const char __user *buf, size_t count
         goto out;
     }
 
-    s_pos = (long) *f_pos / guess;
     s_pos = (long) dev->current_guess;
 
     if (!dev->data) {
