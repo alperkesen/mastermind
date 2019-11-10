@@ -121,7 +121,7 @@ int mastermind_open(struct inode *inode, struct file *filp)
     if ((filp->f_flags & O_ACCMODE) == O_WRONLY) {
         if (down_interruptible(&dev->sem))
             return -ERESTARTSYS;
-        mastermind_trim(dev);
+        // mastermind_trim(dev);
         up(&dev->sem);
     }
     return 0;
@@ -188,6 +188,7 @@ ssize_t mastermind_write(struct file *filp, const char __user *buf, size_t count
     }
 
     s_pos = (long) *f_pos / guess;
+    s_pos = (long) dev->current_guess;
 
     if (!dev->data) {
         dev->data = kmalloc(num_guess * sizeof(char *), GFP_KERNEL);
