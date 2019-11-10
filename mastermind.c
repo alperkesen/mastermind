@@ -26,13 +26,13 @@
 
 #include "mastermind_ioctl.h"
 
-#define MASTERMIND_MAJOR 0
-#define MASTERMIND_NR_DEVS 4
-#define MMIND_NUMBER "4283"
-#define MMIND_MAX_GUESSES 10
-#define MMIND_GUESS 16            // quantum
-#define MMIND_NUM_GUESS 256       // qset
-#define MMIND_DIGITS 4
+#define MASTERMIND_MAJOR      0
+#define MASTERMIND_NR_DEVS    4
+#define MMIND_NUMBER          "4283"
+#define MMIND_MAX_GUESSES     10
+#define MMIND_GUESS           16      // quantum
+#define MMIND_NUM_GUESS       256     // qset
+#define MMIND_DIGITS          4
 
 int mastermind_major = MASTERMIND_MAJOR;
 int mastermind_minor = 0;
@@ -142,9 +142,10 @@ ssize_t mastermind_read(struct file *filp, char __user *buf, size_t count,
 {
     struct mastermind_dev *dev = filp->private_data;
     int guess = dev->guess;
-    int s_pos, q_pos;
+    int s_pos;
     ssize_t retval = 0;
 
+    count = guess;
 
     if (down_interruptible(&dev->sem))
         return -ERESTARTSYS;
@@ -154,20 +155,15 @@ ssize_t mastermind_read(struct file *filp, char __user *buf, size_t count,
         count = dev->size - *f_pos;
 
     s_pos = (long) *f_pos / guess;
-    q_pos = (long) *f_pos % guess;
 
     if (dev->data == NULL || ! dev->data[s_pos])
         goto out;
 
-    /* read only up to the end of this quantum */
-    //if (count > guess - q_pos)
-    //   count = guess - q_pos;
-    count = 16;
-
-    if (copy_to_user(buf, dev->data[s_pos] + q_pos, 16 * 2)) {
+    if (copy_to_user(buf, dev->data[s_pos], guess)) {
         retval = -EFAULT;
         goto out;
     }
+
     *f_pos += count;
     retval = count;
 
@@ -182,7 +178,7 @@ ssize_t mastermind_write(struct file *filp, const char __user *buf, size_t count
 {
     struct mastermind_dev *dev = filp->private_data;
     int guess = dev->guess, num_guess = dev->num_guess;
-    int s_pos, q_pos;
+    int s_pos;
     char *number;
     ssize_t retval = -ENOMEM;
 
@@ -195,7 +191,6 @@ ssize_t mastermind_write(struct file *filp, const char __user *buf, size_t count
     }
 
     s_pos = (long) *f_pos / guess;
-    q_pos = (long) *f_pos % guess;
 
     if (!dev->data) {
         dev->data = kmalloc(num_guess * sizeof(char *), GFP_KERNEL);
@@ -208,32 +203,29 @@ ssize_t mastermind_write(struct file *filp, const char __user *buf, size_t count
         if (!dev->data[s_pos])
             goto out;
     }
-    /* write only up to the end of this quantum */
-    // if (count > guess - q_pos)
-    //     count = guess - q_pos;
 
-    number = kmalloc((MMIND_DIGITS + 1) * sizeof(char), GFP_KERNEL);
+    number = (char *)kmalloc((MMIND_DIGITS + 1) * sizeof(char), GFP_KERNEL);
 
-    if (copy_from_user(number, buf, MMIND_DIGITS)) {
+    if (copy_from_user(number, buf, MMIND_DIGITS + 1)) {
         retval = -EFAULT;
         goto out;
     }
 
-    // report = kmalloc(16 * sizeof(char), GFP_KERNEL);
     dev->current_guess++;
+
 
     if (dev->current_guess > mmind_max_guesses) {
         retval = -EFAULT;
         goto out;
     }
 
-    //dev->data[s_pos] + q_pos
-    write_mmind_number(dev->data[s_pos] + q_pos, mmind_number, number,
+    count = guess;
+
+    write_mmind_number(dev->data[s_pos], mmind_number, number,
 		       dev->current_guess);
     *f_pos += count;
     retval = count;
 
-    /* update the size */
     if (dev->size < *f_pos)
         dev->size = *f_pos;
 
