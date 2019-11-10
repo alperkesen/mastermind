@@ -231,6 +231,7 @@ ssize_t mastermind_write(struct file *filp, const char __user *buf, size_t count
     if (dev->size < *f_pos)
         dev->size = *f_pos;
 
+    kfree(number);
   out:
     up(&dev->sem);
     return retval;
