@@ -237,7 +237,7 @@ ssize_t mastermind_write(struct file *filp, const char __user *buf, size_t count
 
 long mastermind_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-
+        struct mastermind_dev *dev = filp->private_data;
 	int err = 0, tmp;
 	int retval = 0;
 
@@ -262,14 +262,21 @@ long mastermind_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	switch(cmd) {
           case MMIND_REMAINING:
-	    return 2;
-
+	    if (!capable(CAP_SYS_ADMIN))
+	      return -EPERM;
+	    retval = mmind_max_guesses - dev->current_guess;
+	    break;
           case MMIND_NEWGAME:
-	    return 3;
-
+	    if (!capable(CAP_SYS_ADMIN))
+	      return -EPERM;
+	    mastermind_trim(dev);
+	    mmind_number = arg;
+	    break;
 	  case MMIND_ENDGAME:
-	    return 5;
-
+	    if (!capable(CAP_SYS_ADMIN))
+	      return -EPERM;
+	    mastermind_trim(dev);
+	    break;
 	  default:  /* redundant, as cmd was checked against MAXNR */
 		return -ENOTTY;
 	}
