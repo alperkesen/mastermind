@@ -105,7 +105,6 @@ int mastermind_trim(struct mastermind_dev *dev)
     dev->data = NULL;
     dev->guess = mmind_guess;
     dev->num_guess = mmind_num_guess;
-    dev->current_guess = 0;
     dev->size = 0;
     return 0;
 }
@@ -117,7 +116,6 @@ int mastermind_open(struct inode *inode, struct file *filp)
 
     dev = container_of(inode->i_cdev, struct mastermind_dev, cdev);
     filp->private_data = dev;
-    dev->current_guess = 0;
 
     /* trim the device if open was write-only */
     if ((filp->f_flags & O_ACCMODE) == O_WRONLY) {
