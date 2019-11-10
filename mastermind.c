@@ -140,30 +140,34 @@ ssize_t mastermind_read(struct file *filp, char __user *buf, size_t count,
     struct mastermind_dev *dev = filp->private_data;
     int guess = dev->guess;
     int s_pos;
+    int i;
+    char *report;
     ssize_t retval = 0;
 
-    count = guess;
+    count = guess * dev->current_guess;
 
     if (down_interruptible(&dev->sem))
         return -ERESTARTSYS;
     if (*f_pos >= dev->size)
         goto out;
-    if (*f_pos + count > dev->size)
-        count = dev->size - *f_pos;
 
-    s_pos = (long) *f_pos / guess;
-
-    if (dev->data == NULL || ! dev->data[s_pos])
+    if (dev->data == NULL || ! dev->data[0])
         goto out;
 
-    if (copy_to_user(buf, dev->data[s_pos], guess)) {
+    report = kmalloc(count, GFP_KERNEL);
+
+    for (i = 0; i < dev->current_guess; i++) {
+        memcpy(report + i * guess, dev->data[i], guess);
+    }
+
+    if (copy_to_user(buf, report, count)) {
         retval = -EFAULT;
         goto out;
     }
 
     *f_pos += count;
     retval = count;
-
+    kfree(report);
   out:
     up(&dev->sem);
     return retval;
