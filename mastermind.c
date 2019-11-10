@@ -76,8 +76,7 @@ void write_mmind_number(char *buffer, char *mmind_number, char *number, int num_
         m++;
     }
   }
-  for (i = 0; i < MMIND_DIGITS; i++)
-  {
+  for (i = 0; i < MMIND_DIGITS; i++) {
     if (temp_number[i] != '+') {
         char* found_char = strchr(temp_number, mmind_number[i]);
         if(found_char) {
@@ -87,8 +86,8 @@ void write_mmind_number(char *buffer, char *mmind_number, char *number, int num_
     }
   }
 
-  snprintf(buffer, MMIND_GUESS * 2, "%s %d+%d- %04d\n",
-	   number, m, n, num_guess);
+  number[MMIND_DIGITS] = '\0';
+  snprintf(buffer, MMIND_GUESS, "%s %d+%d- %04d\n", number, m, n, num_guess);
 }
 
 

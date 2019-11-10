@@ -33,15 +33,26 @@ int write_mmind_number(char *buffer, char *mmind_number, char *number, int num_g
 
   printf("MMind number: %s\n", mmind_number);
   
+  char temp_number[MMIND_DIGITS+1];
+  memcpy(temp_number, number, MMIND_DIGITS + 1);
+
   for (i = 0; i < MMIND_DIGITS; i++) {
-    if (mmind_number[i] == number[i]) {
-      m++;
-    } else {
-      if (strchr(mmind_number, number[i])) {
-	n++;
-      }
+    if (number[i] == mmind_number[i]) {
+        temp_number[i] = '+';
+        m++;
     }
   }
+  for (i = 0; i < MMIND_DIGITS; i++)
+  {
+    if (temp_number[i] != '+') {
+        char* found_char = strchr(temp_number, mmind_number[i]);
+        if(found_char) {
+            found_char[0] = '-';
+            n++;
+        }
+    }
+  }
+  
   printf("m:%d n:%d\n",m,n);
   snprintf(buffer, MMIND_BUFFER_LEN, "%s %d+ %d- %04d\n ",
 	   number, m, n, num_guess);
