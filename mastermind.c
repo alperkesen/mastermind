@@ -181,7 +181,6 @@ ssize_t mastermind_write(struct file *filp, const char __user *buf, size_t count
     int guess = dev->guess, num_guess = dev->num_guess;
     int s_pos;
     char *number;
-    char *secret;
     ssize_t retval = -ENOMEM;
 
     if (down_interruptible(&dev->sem))
@@ -233,7 +232,6 @@ ssize_t mastermind_write(struct file *filp, const char __user *buf, size_t count
         dev->size = *f_pos;
 
     kfree(number);
-    kfree(secret);
   out:
     up(&dev->sem);
     return retval;
