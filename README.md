@@ -45,6 +45,33 @@ $ cat /dev/mastermind
 4531 1+ 1- 0002
 ```
 
+### Testing ioctl commands
+
+In order to test ioctl commands, first compile test code.
+
+```bash
+$ gcc mmind_ioctl.c -o test
+```
+
+Then run the output file with arguments depending on the ioctl command to test.
+For MMIND_REMAINING command:
+
+```bash
+$ ./test 0
+```
+
+For MMIND_NEWGAME command, assuming new secret number is 1509:
+
+```bash
+$ ./test 1 1509
+```
+
+For MMIND_ENDGAME command:
+
+```bash
+$ ./test 2
+```
+
 ### Removing the module
 
 ```bash
