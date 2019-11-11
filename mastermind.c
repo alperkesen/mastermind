@@ -28,7 +28,7 @@
 
 #define MASTERMIND_MAJOR      0
 #define MASTERMIND_NR_DEVS    4
-#define MMIND_NUMBER          4283
+#define MMIND_NUMBER          "4283"
 #define MMIND_MAX_GUESSES     10
 #define MMIND_GUESS           16      // quantum
 #define MMIND_NUM_GUESS       256     // qset
@@ -37,13 +37,13 @@
 int mastermind_major = MASTERMIND_MAJOR;
 int mastermind_minor = 0;
 int mastermind_nr_devs = MASTERMIND_NR_DEVS;
-int mmind_number = MMIND_NUMBER;
+char *mmind_number = MMIND_NUMBER;
 int mmind_max_guesses = MMIND_MAX_GUESSES;
 int mmind_guess = MMIND_GUESS;
 int mmind_num_guess = MMIND_NUM_GUESS;
 
 module_param(mastermind_major, int, S_IRUGO);
-module_param(mmind_number, int, S_IRUGO | S_IWUSR);
+module_param(mmind_number, charp, S_IRUGO | S_IWUSR);
 module_param(mmind_max_guesses, int, S_IRUGO);
 
 MODULE_AUTHOR("Group 28");
@@ -223,9 +223,8 @@ ssize_t mastermind_write(struct file *filp, const char __user *buf, size_t count
     }
 
     count = guess;
-    secret = kmalloc(MMIND_DIGITS+1, GFP_KERNEL);
-    snprintf(secret, MMIND_DIGITS+1, "%d", mmind_number);
-    write_mmind_number(dev->data[s_pos], secret, number,
+    
+    write_mmind_number(dev->data[s_pos], mmind_number, number,
 		       dev->current_guess);
     *f_pos += count;
     retval = count;
@@ -275,7 +274,7 @@ long mastermind_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	    if (!capable(CAP_SYS_ADMIN))
 	      return -EPERM;
 	    mastermind_trim(dev);
-        mmind_number = (int)arg;
+        snprintf(mmind_number, MMIND_DIGITS+1,"%d",(int)arg);
 	    break;
 	  case MMIND_ENDGAME:
 	    if (!capable(CAP_SYS_ADMIN))
